@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="category.js"></script>
+  <title>Manage Categories</title>
+</head>
+<body>
+  <div class="container">
+    <h1>Category Management</h1>
+    <div class="category-button-container">
+    <button class="manage-categories-btn" onclick="window.location.href='index.html'" class="back-btn">← Back to Expenses</button>
+    </div>
+    <form id="category-form" autocomplete="off">
+      <label for="category-name">New Category:</label>
+      <input type="text" id="category-name" placeholder="Enter Category" required />
+      <button type="submit">Add Category</button>
+    </form>
+
+    <div class="expense-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Category Name</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="category-list"></tbody>
+      </table>
+    </div>
+
+  </div>
+</body>
+</html>
