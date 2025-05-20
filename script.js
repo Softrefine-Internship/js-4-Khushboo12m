@@ -295,26 +295,32 @@ function displayExpense(data) {
   const paginatedData = paginateExpenses(data, currentExpensePage);
   expenseList.innerHTML = "";
 
-  paginatedData.forEach(exp => {
+  if (paginatedData.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${exp.name}</td>
-      <td>${exp.amount}</td>
-      <td>${exp.category}</td>
-      <td>${exp.date}</td>
-      <td>
-        <button class="edit-btn" data-id="${exp.id}">Edit</button>
-        <button class="delete-btn" data-id="${exp.id}">Delete</button>
-      </td>
-    `;
+    tr.innerHTML = `<td colspan="5" style="text-align:center;">No data found</td>`;
     expenseList.appendChild(tr);
-  });
+  } else {
+    paginatedData.forEach(exp => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${exp.name}</td>
+        <td>${exp.amount}</td>
+        <td>${exp.category}</td>
+        <td>${exp.date}</td>
+        <td>
+          <button class="edit-btn" data-id="${exp.id}">Edit</button>
+          <button class="delete-btn" data-id="${exp.id}">Delete</button>
+        </td>
+      `;
+      expenseList.appendChild(tr);
+    });
+  }
 
   updatePaginationControls(data.length);
 }
 
 function updatePaginationControls(totalItems) {
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   document.getElementById("expense-page-info").textContent = `Page ${currentExpensePage} of ${totalPages}`;
 
   document.getElementById("expense-prev").disabled = currentExpensePage === 1;
@@ -365,30 +371,39 @@ function renderCategories() {
 
   const paginatedCategories = paginateCategories(categories, currentCategoryPage);
 
-  paginatedCategories.forEach((cat, index) => {
-    const actualIndex = (currentCategoryPage - 1) * categoriesPerPage + index;
+  if (paginatedCategories.length === 0) {
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${cat}</td>
-      <td>
-        <button class="edit-btn" type="button" onclick="editCategory(${actualIndex})">Edit</button>
-        <button class="delete-btn" type="button" onclick="deleteCategory(${actualIndex})">Delete</button>
-      </td>
+      <td colspan="2" style="text-align: center;">No data available</td>
     `;
     categoryList.appendChild(row);
-  });
+  } else {
+    paginatedCategories.forEach((cat, index) => {
+      const actualIndex = (currentCategoryPage - 1) * categoriesPerPage + index;
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${cat}</td>
+        <td>
+          <button class="edit-btn" type="button" onclick="editCategory(${actualIndex})">Edit</button>
+          <button class="delete-btn" type="button" onclick="deleteCategory(${actualIndex})">Delete</button>
+        </td>
+      `;
+      categoryList.appendChild(row);
+    });
+  }
 
   updateCategoryPaginationControls();
 }
 
-
 function updateCategoryPaginationControls() {
-  const totalPages = Math.ceil(categories.length / categoriesPerPage);
+  const totalPages = Math.max(1, Math.ceil(categories.length / categoriesPerPage));
   document.getElementById("category-page-info").textContent = `Page ${currentCategoryPage} of ${totalPages}`;
 
   document.getElementById("category-prev").disabled = currentCategoryPage === 1;
   document.getElementById("category-next").disabled = currentCategoryPage === totalPages || totalPages === 0;
 }
+
+
 
 document.getElementById("category-prev").addEventListener("click", () => {
   if (currentCategoryPage > 1) {
