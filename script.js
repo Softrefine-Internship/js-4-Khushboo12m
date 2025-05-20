@@ -5,23 +5,44 @@ const expenseList = document.getElementById("expense-list");
 const totalAmount = document.getElementById("total-amount");
 const filterCategory = document.getElementById("filter-category");
 const filterName = document.getElementById("filter-name");
-const filterAmount = document.getElementById("filter-amount");
-const filterDate = document.getElementById("filter-date");
+
+let currentExpensePage = 1;
+const itemsPerPage = 5;
+let currentCategoryPage = 1;
+const categoriesPerPage = 5;
+
+// New date range filters:
+const filterStartDate = document.getElementById("filter-start-date");
+const filterEndDate = document.getElementById("filter-end-date");
 
 const categorySelect = document.getElementById("expense-category");
 
 const defaultCategories = ["Food", "Entertainment", "Transport", "Clothes", "Other"];
+
+function showCategorySection() {
+  document.getElementById('expense-section').style.display = 'none';
+  document.getElementById('category-section').style.display = 'block';
+}
+
+function showExpenseSection() {
+  document.getElementById('category-section').style.display = 'none';
+  document.getElementById('expense-section').style.display = 'block';
+}
 
 function loadCategories() {
   const storedCategories = JSON.parse(localStorage.getItem("categories"));
   return storedCategories && storedCategories.length ? storedCategories : defaultCategories;
 }
 
+
 function populateCategoryDropdowns() {
   const categories = loadCategories();
 
   categorySelect.innerHTML = "";
   filterCategory.innerHTML = "";
+  const editCategory = document.getElementById("edit-category");
+  editCategory.innerHTML = "";
+
 
   const allOption = document.createElement("option");
   allOption.value = "All";
@@ -38,6 +59,11 @@ function populateCategoryDropdowns() {
     option2.value = cat;
     option2.text = cat;
     filterCategory.appendChild(option2);
+
+    const option3 = document.createElement("option");
+    option3.value = cat;
+    option3.text = cat;
+    editCategory.appendChild(option3);
   });
 }
 
@@ -101,43 +127,87 @@ expenseList.addEventListener("click", (e) => {
     updateTotalAmount();
   }
 
-  if (e.target.classList.contains("edit-btn")) {
-    const id = parseInt(e.target.dataset.id);
-    const expense = expenseStore.find(exp => exp.id === id);
 
-    document.getElementById("expense-name").value = expense.name;
-    document.getElementById("expense-amount").value = expense.amount;
-    document.getElementById("expense-category").value = expense.category;
-    document.getElementById("expense-date").value = expense.date.split("/").reverse().join("-");
 
-    expenseStore = expenseStore.filter(exp => exp.id !== id);
+if (e.target.classList.contains("edit-btn")) {
+  const id = parseInt(e.target.dataset.id);
+  const expense = expenseStore.find(exp => exp.id === id);
+
+  populateCategoryDropdowns(); 
+  document.getElementById("edit-id").value = expense.id;
+  document.getElementById("edit-name").value = expense.name;
+  document.getElementById("edit-amount").value = expense.amount;
+  document.getElementById("edit-category").value = expense.category;
+
+  const [d, m, y] = expense.date.split('/');
+  document.getElementById("edit-date").value = `${y}-${m}-${d}`;
+
+  document.getElementById("edit-expense-modal").style.display = "block";
+}
+});
+
+
+document.getElementById("edit-expense-form").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const id = parseInt(document.getElementById("edit-id").value);
+  const name = document.getElementById("edit-name").value;
+  const amount = parseFloat(document.getElementById("edit-amount").value);
+  const category = document.getElementById("edit-category").value;
+  const dateInput = document.getElementById("edit-date").value;
+  const formattedDate = formatDate(new Date(dateInput));
+
+  const index = expenseStore.findIndex(exp => exp.id === id);
+  if (index !== -1) {
+    expenseStore[index] = { id, name, amount, category, date: formattedDate };
     localStorage.setItem("expenseStore", JSON.stringify(expenseStore));
     displayExpense(expenseStore);
     updateTotalAmount();
+    closeEditModal();
   }
 });
+
+
+function closeEditModal() {
+  document.getElementById("edit-expense-modal").style.display = "none";
+}
 
 // Filters
 function applyAllFilters() {
   let filtered = [...expenseStore];
 
   const nameValue = filterName.value.toLowerCase();
-  const amountValue = parseFloat(filterAmount.value);
-  const dateValue = filterDate.value;
   const categoryValue = filterCategory.value;
+
+  // New date range values:
+  const startDateValue = filterStartDate.value;
+  const endDateValue = filterEndDate.value;
 
   if (nameValue) {
     filtered = filtered.filter(exp => exp.name.toLowerCase().includes(nameValue));
   }
 
-  if (!isNaN(amountValue)) {
-    filtered = filtered.filter(exp => exp.amount === amountValue);
-  }
+  
+  
+  if (startDateValue && endDateValue) {
+    const startDate = new Date(startDateValue);
+    const endDate = new Date(endDateValue);
 
-  if (dateValue) {
-    const formattedDate = formatDate(new Date(dateValue));
-    filtered = filtered.filter(exp => exp.date === formattedDate);
+    if (startDate > endDate) {
+      alert("End Date must be greater than Start Date");
+      return filtered;
+
+    }
+  
+    filtered = filtered.filter(exp => {
+      const [d, m, y] = exp.date.split('/');
+      const expDate = new Date(`${y}-${m}-${d}`);
+      return expDate >= startDate && expDate <= endDate;
+    });
   }
+  
+  
+  
 
   if (categoryValue !== "All") {
     filtered = filtered.filter(exp => exp.category === categoryValue);
@@ -148,6 +218,8 @@ function applyAllFilters() {
 
 // Sorting
 function filterAndSort() {
+  currentExpensePage = 1; // Reset to page 1 after any filter
+
   let expenses = applyAllFilters();
 
   const { key, ascending } = currentSort;
@@ -156,10 +228,7 @@ function filterAndSort() {
       let valA = a[key];
       let valB = b[key];
 
-      if (key === 'amount') {
-        valA = parseFloat(valA);
-        valB = parseFloat(valB);
-      } else if (key === 'date') {
+      if (key === 'date') {
         const [d1, m1, y1] = valA.split('/');
         const [d2, m2, y2] = valB.split('/');
         valA = new Date(`${y1}-${m1}-${d1}`);
@@ -200,42 +269,224 @@ document.querySelectorAll('.sort').forEach(button => {
 
 // Filter events
 filterName.addEventListener("input", filterAndSort);
-filterAmount.addEventListener("input", filterAndSort);
-filterDate.addEventListener("input", filterAndSort);
+filterStartDate.addEventListener("change", filterAndSort);
+filterEndDate.addEventListener("change", filterAndSort);
+
+
 filterCategory.addEventListener("change", filterAndSort);
 
 // Reset filters
 document.getElementById("reset-filters").addEventListener("click", () => {
   filterName.value = "";
-  filterAmount.value = "";
-  filterDate.value = "";
+  filterStartDate.value = "";
+  filterEndDate.value = "";
   filterCategory.value = "All";
   filterAndSort();
 });
 
-// Display expenses in table
-function displayExpense(showExpense) {
+// // Display expenses in table
+function paginateExpenses(data, page = 1) {
+  const start = (page - 1) * itemsPerPage;
+  const paginatedData = data.slice(start, start + itemsPerPage);
+  return paginatedData;
+}
+
+function displayExpense(data) {
+  const paginatedData = paginateExpenses(data, currentExpensePage);
   expenseList.innerHTML = "";
 
-  showExpense.forEach(element => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${element.name}</td>
-      <td>${element.amount}</td>
-      <td>${element.category}</td>
-      <td>${element.date}</td>
+  paginatedData.forEach(exp => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${exp.name}</td>
+      <td>${exp.amount}</td>
+      <td>${exp.category}</td>
+      <td>${exp.date}</td>
       <td>
-      <div class="action-buttons">
-      <button class="edit-btn" data-id="${element.id}">Edit</button>
-      <button class="delete-btn" data-id="${element.id}">Delete</button>
-      </div>
-      </td>`;
-    expenseList.appendChild(row);
+        <button class="edit-btn" data-id="${exp.id}">Edit</button>
+        <button class="delete-btn" data-id="${exp.id}">Delete</button>
+      </td>
+    `;
+    expenseList.appendChild(tr);
   });
+
+  updatePaginationControls(data.length);
 }
+
+function updatePaginationControls(totalItems) {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  document.getElementById("expense-page-info").textContent = `Page ${currentExpensePage} of ${totalPages}`;
+
+  document.getElementById("expense-prev").disabled = currentExpensePage === 1;
+  document.getElementById("expense-next").disabled = currentExpensePage === totalPages;
+}
+
+// Pagination button listeners
+document.getElementById("expense-prev").addEventListener("click", () => {
+  if (currentExpensePage > 1) {
+    currentExpensePage--;
+    displayExpense(expenseStore);
+  }
+});
+
+document.getElementById("expense-next").addEventListener("click", () => {
+  const totalPages = Math.ceil(expenseStore.length / itemsPerPage);
+  if (currentExpensePage < totalPages) {
+    currentExpensePage++;
+    displayExpense(expenseStore);
+  }
+});
+
 
 // Total calculation
 function updateTotalAmount(expenses = expenseStore) {
   const total = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
   totalAmount.textContent = total.toFixed(2);
 }
+
+// Category management
+
+const categoryForm = document.getElementById('category-form');
+const categoryList = document.getElementById('category-list');
+const categoryInput = document.getElementById('category-name');
+
+// Load or initialize categories
+let categories = JSON.parse(localStorage.getItem("categories")) || [...defaultCategories];
+saveCategories();
+
+
+function paginateCategories(data, page = 1) {
+  const start = (page - 1) * categoriesPerPage;
+  return data.slice(start, start + categoriesPerPage);
+}
+
+function renderCategories() {
+  categoryList.innerHTML = "";
+
+  const paginatedCategories = paginateCategories(categories, currentCategoryPage);
+
+  paginatedCategories.forEach((cat, index) => {
+    const actualIndex = (currentCategoryPage - 1) * categoriesPerPage + index;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${cat}</td>
+      <td>
+        <button class="edit-btn" type="button" onclick="editCategory(${actualIndex})">Edit</button>
+        <button class="delete-btn" type="button" onclick="deleteCategory(${actualIndex})">Delete</button>
+      </td>
+    `;
+    categoryList.appendChild(row);
+  });
+
+  updateCategoryPaginationControls();
+}
+
+
+function updateCategoryPaginationControls() {
+  const totalPages = Math.ceil(categories.length / categoriesPerPage);
+  document.getElementById("category-page-info").textContent = `Page ${currentCategoryPage} of ${totalPages}`;
+
+  document.getElementById("category-prev").disabled = currentCategoryPage === 1;
+  document.getElementById("category-next").disabled = currentCategoryPage === totalPages || totalPages === 0;
+}
+
+document.getElementById("category-prev").addEventListener("click", () => {
+  if (currentCategoryPage > 1) {
+    currentCategoryPage--;
+    renderCategories();
+  }
+});
+
+document.getElementById("category-next").addEventListener("click", () => {
+  const totalPages = Math.ceil(categories.length / categoriesPerPage);
+  if (currentCategoryPage < totalPages) {
+    currentCategoryPage++;
+    renderCategories();
+  }
+});
+
+
+function saveCategories() {
+  localStorage.setItem("categories", JSON.stringify(categories));
+  populateCategoryDropdowns(); 
+  currentCategoryPage = 1;
+  renderCategories();
+}
+
+
+
+categoryForm.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const name = categoryInput.value.trim();
+
+  if (name === "") {
+    alert("Category name cannot be empty.");
+    return;
+  }
+
+  const lowerCaseName = name.toLowerCase();
+  const existingLowerCaseCategories = categories.map(cat => cat.toLowerCase());
+
+  if (existingLowerCaseCategories.includes(lowerCaseName)) {
+    alert("Category already exists!");
+    return;
+  }
+
+  categories.push(name);
+  categoryInput
+  categoryInput.value = "";
+  saveCategories();
+});
+
+function deleteCategory(index) {
+  const category = categories[index];
+  if (confirm(`Delete category "${category}"?.`)) {
+    // Remove the category
+    categories.splice(index, 1);
+    saveCategories();
+
+    // Remove all expenses with this category
+    expenseStore = expenseStore.filter(exp => exp.category !== category);
+    localStorage.setItem("expenseStore", JSON.stringify(expenseStore));
+    displayExpense(expenseStore);
+    updateTotalAmount();
+    
+  }
+}
+
+function editCategory(index) {
+  const newName = prompt("Edit category name:", categories[index]);
+if (newName) {
+const trimmedName = newName.trim();
+if (trimmedName === "") {
+alert("Category name cannot be empty.");
+return;
+}
+// Check for duplicates ignoring case
+const lowerTrimmed = trimmedName.toLowerCase();
+const existingLowerCaseCategories = categories
+.filter((_, i) => i !== index)
+.map(cat => cat.toLowerCase());
+
+if (existingLowerCaseCategories.includes(lowerTrimmed)) {
+  alert("Category already exists!");
+  return;
+}
+
+const oldName = categories[index];
+categories[index] = trimmedName;
+saveCategories();
+
+// Update category name in expenses
+expenseStore.forEach(exp => {
+  if (exp.category === oldName) {
+    exp.category = trimmedName;
+  }
+});
+localStorage.setItem("expenseStore", JSON.stringify(expenseStore));
+displayExpense(expenseStore);
+updateTotalAmount();
+}
+}
+
+renderCategories();
