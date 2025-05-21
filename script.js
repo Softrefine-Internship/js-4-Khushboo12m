@@ -341,16 +341,16 @@ document.getElementById("expense-prev").addEventListener("click", () => {
   if (currentExpensePage > 1) {
     currentExpensePage--;
     displayExpense(currentFilteredExpenses);
-    updatePaginationControls(currentFilteredExpenses.length); // ✅ FIXED
+    updatePaginationControls(currentFilteredExpenses.length); 
   }
 });
 
 document.getElementById("expense-next").addEventListener("click", () => {
-  const totalPages = Math.ceil(currentFilteredExpenses.length / itemsPerPage); // ✅ FIXED
+  const totalPages = Math.ceil(currentFilteredExpenses.length / itemsPerPage); 
   if (currentExpensePage < totalPages) {
     currentExpensePage++;
     displayExpense(currentFilteredExpenses);
-    updatePaginationControls(currentFilteredExpenses.length); // ✅ FIXED
+    updatePaginationControls(currentFilteredExpenses.length); 
   }
 });
 
