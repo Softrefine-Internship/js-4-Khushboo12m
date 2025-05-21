@@ -5,6 +5,7 @@ const expenseList = document.getElementById("expense-list");
 const totalAmount = document.getElementById("total-amount");
 const filterCategory = document.getElementById("filter-category");
 const filterName = document.getElementById("filter-name");
+let currentFilteredExpenses = [];
 
 let currentExpensePage = 1;
 const itemsPerPage = 5;
@@ -30,8 +31,13 @@ function showExpenseSection() {
 }
 
 function loadCategories() {
-  const storedCategories = JSON.parse(localStorage.getItem("categories"));
-  return storedCategories && storedCategories.length ? storedCategories : defaultCategories;
+  let storedCategories = JSON.parse(localStorage.getItem("categories"));
+
+  if (!storedCategories) {
+    storedCategories = []; 
+  }
+
+  return storedCategories;
 }
 
 
@@ -112,6 +118,8 @@ expenseForm.addEventListener("submit", (e) => {
 
   expenseStore.push(expense);
   localStorage.setItem("expenseStore", JSON.stringify(expenseStore));
+  filterAndSort();
+
   displayExpense(expenseStore);
   updateTotalAmount();
   expenseForm.reset();
@@ -123,11 +131,9 @@ expenseList.addEventListener("click", (e) => {
     const id = parseInt(e.target.dataset.id);
     expenseStore = expenseStore.filter(exp => exp.id !== id);
     localStorage.setItem("expenseStore", JSON.stringify(expenseStore));
-    displayExpense(expenseStore);
-    updateTotalAmount();
+    filterAndSort();  
+    updateTotalAmount(); 
   }
-
-
 
 if (e.target.classList.contains("edit-btn")) {
   const id = parseInt(e.target.dataset.id);
@@ -145,7 +151,6 @@ if (e.target.classList.contains("edit-btn")) {
   document.getElementById("edit-expense-modal").style.display = "block";
 }
 });
-
 
 document.getElementById("edit-expense-form").addEventListener("submit", function (e) {
   e.preventDefault();
@@ -166,8 +171,6 @@ document.getElementById("edit-expense-form").addEventListener("submit", function
     closeEditModal();
   }
 });
-
-
 function closeEditModal() {
   document.getElementById("edit-expense-modal").style.display = "none";
 }
@@ -218,7 +221,7 @@ function applyAllFilters() {
 
 // Sorting
 function filterAndSort() {
-  currentExpensePage = 1; // Reset to page 1 after any filter
+  currentExpensePage = 1; 
 
   let expenses = applyAllFilters();
 
@@ -228,7 +231,10 @@ function filterAndSort() {
       let valA = a[key];
       let valB = b[key];
 
-      if (key === 'date') {
+      if (key === 'amount') {
+        valA = parseFloat(valA);
+        valB = parseFloat(valB);
+      } else if (key === 'date') {
         const [d1, m1, y1] = valA.split('/');
         const [d2, m2, y2] = valB.split('/');
         valA = new Date(`${y1}-${m1}-${d1}`);
@@ -244,9 +250,12 @@ function filterAndSort() {
     });
   }
 
-  displayExpense(expenses);
-  updateTotalAmount(expenses);
+  currentFilteredExpenses = expenses;
+
+  displayExpense(currentFilteredExpenses);
+  updateTotalAmount(currentFilteredExpenses);
 }
+filterAndSort();
 
 // Event listeners for sort buttons
 document.querySelectorAll('.sort').forEach(button => {
@@ -331,15 +340,17 @@ function updatePaginationControls(totalItems) {
 document.getElementById("expense-prev").addEventListener("click", () => {
   if (currentExpensePage > 1) {
     currentExpensePage--;
-    displayExpense(expenseStore);
+    displayExpense(currentFilteredExpenses);
+    updatePaginationControls(currentFilteredExpenses.length); // ✅ FIXED
   }
 });
 
 document.getElementById("expense-next").addEventListener("click", () => {
-  const totalPages = Math.ceil(expenseStore.length / itemsPerPage);
+  const totalPages = Math.ceil(currentFilteredExpenses.length / itemsPerPage); // ✅ FIXED
   if (currentExpensePage < totalPages) {
     currentExpensePage++;
-    displayExpense(expenseStore);
+    displayExpense(currentFilteredExpenses);
+    updatePaginationControls(currentFilteredExpenses.length); // ✅ FIXED
   }
 });
 
